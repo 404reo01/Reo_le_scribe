@@ -1,0 +1,42 @@
+version: '3.9'
+
+# Production compose — uses network_mode: host so Mediasoup UDP ports
+# bind directly on the machine without Docker NAT (required on Linux VPS).
+# Run with: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reo_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-reo_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # No port mapping needed — backend reaches it via localhost (host network)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reo_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: ../../docker/backend/Dockerfile
+    restart: unless-stopped
+    # host networking: Mediasoup binds UDP ports directly on the VPS
+    network_mode: host
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

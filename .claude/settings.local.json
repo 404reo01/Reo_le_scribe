@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const m = require\\('mediasoup-client'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"const m = require\\('mediasoup'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const pkg=JSON.parse\\(fs.readFileSync\\('C:/Users/themi/Desktop/projets/Reo-le-scribe/src/backend/node_modules/mediasoup/package.json','utf8'\\)\\); console.log\\(JSON.stringify\\(pkg.exports,null,2\\)\\)\")",
+      "Bash(docker --version)",
+      "Bash(docker compose:*)",
+      "Bash(curl -s \"http://localhost:3000/socket.io/?EIO=4&transport=polling\")",
+      "Bash(curl -s \"http://localhost:5173/socket.io/?EIO=4&transport=polling\")",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(docker exec reo-le-scribe-postgres-1:*)",
+      "Bash(node -e ':*)",
+      "Bash(node:*)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Skill(update-config)",
+      "WebFetch(domain:reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

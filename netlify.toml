@@ -1,0 +1,13 @@
+[build]
+  base    = "src/frontend"
+  command = "npm run build"
+  publish = "src/frontend/dist"
+
+[build.environment]
+  # Set this in Netlify dashboard → Site settings → Environment variables
+  # VITE_BACKEND_URL = "http://<VPS_IP>:3000"
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
