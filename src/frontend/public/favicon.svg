@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#18181b"/>
+  <!-- camera body -->
+  <rect x="3" y="10" width="18" height="13" rx="2.5" fill="#e4e4e7"/>
+  <!-- lens -->
+  <circle cx="12" cy="16.5" r="4.5" fill="#3f3f46"/>
+  <circle cx="12" cy="16.5" r="2.8" fill="#71717a"/>
+  <circle cx="12" cy="16.5" r="1.4" fill="#18181b"/>
+  <!-- viewfinder bump -->
+  <rect x="8" y="7.5" width="6" height="3" rx="1" fill="#e4e4e7"/>
+  <!-- record button -->
+  <circle cx="18.5" cy="11.5" r="1.5" fill="#ef4444"/>
+  <!-- lens shine -->
+  <circle cx="10.8" cy="15.3" r="0.7" fill="white" opacity="0.5"/>
+  <!-- camcorder tape door -->
+  <rect x="4" y="12" width="6" height="8" rx="1" fill="#d4d4d8"/>
+</svg>
