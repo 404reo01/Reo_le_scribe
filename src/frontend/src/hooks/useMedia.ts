@@ -40,6 +40,7 @@ export function useMedia() {
   const [remoteStreams, setRemoteStreams] = useState<Map<string, RemoteStream>>(new Map());
   const [isReady, setIsReady] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const consumeProducer = useCallback(async (
     producerId: string,
@@ -207,6 +208,16 @@ export function useMedia() {
     }
   }, []);
 
+  const toggleMute = useCallback(() => {
+    setLocalStream((prev) => {
+      if (!prev) return prev;
+      const next = !isMuted;
+      prev.getAudioTracks().forEach((t) => { t.enabled = !next; });
+      return prev;
+    });
+    setIsMuted((v) => !v);
+  }, [isMuted]);
+
   // Stop camera — removes video track, keeps audio running
   const stopCamera = useCallback(async () => {
     const videoProducer = producersRef.current.get('video');
@@ -273,6 +284,8 @@ export function useMedia() {
     remoteStreams,
     isReady,
     isCameraOn,
+    isMuted,
+    toggleMute,
     startCamera,
     stopCamera,
     stopAll,

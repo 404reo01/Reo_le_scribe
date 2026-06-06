@@ -19,7 +19,7 @@ export function RoomPage() {
   const { state, dispatch } = useRoom();
   const {
     localStream, screenStream, remoteStreams,
-    isReady, isCameraOn, startCamera, stopCamera, stopAll,
+    isReady, isCameraOn, isMuted, toggleMute, startCamera, stopCamera, stopAll,
     startScreenShare, stopScreenShare,
   } = useMedia();
   const { start: startBuffer, stop: stopBuffer, getBlob } = useAudioBuffer();
@@ -120,20 +120,49 @@ export function RoomPage() {
                 cursor: bookmarkLoading ? 'wait' : 'pointer',
               }}
             >
-              {bookmarkLoading ? 'Processing…' : "🔖 À l'affût"}
+              {bookmarkLoading ? 'Processing…' : "À l'affût"}
             </button>
           )}
 
           <button
             onClick={() => { setPanelOpen((v) => !v); setNewBookmark(false); }}
-            className="relative text-sm px-3 py-1.5 rounded-lg transition-all"
-            style={{ ...glass }}
+            className="relative text-sm font-medium px-3 py-1.5 rounded-lg transition-all"
+            style={{ ...glass, color: '#FFEDD4' }}
           >
-            <span style={{ color: '#FFEDD4' }}>📋</span>
+            Notes
             {newBookmark && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full" />
             )}
           </button>
+
+          {isReady && hasMic && (
+            <button
+              onClick={toggleMute}
+              title={isMuted ? 'Unmute' : 'Mute'}
+              className="flex items-center justify-center w-9 h-9 rounded-lg transition-all active:scale-95"
+              style={{
+                background: isMuted ? 'rgba(130,24,26,0.6)' : 'rgba(255,237,212,0.08)',
+                border: isMuted ? '1px solid rgba(130,24,26,0.7)' : '1px solid rgba(255,237,212,0.15)',
+              }}
+            >
+              {isMuted ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFEDD4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFEDD4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </button>
+          )}
 
           {isReady && (
             <>
