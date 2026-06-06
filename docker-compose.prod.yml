@@ -24,8 +24,8 @@ services:
 
   backend:
     build:
-      context: ./src/backend
-      dockerfile: ../../docker/backend/Dockerfile
+      context: .
+      dockerfile: docker/backend/Dockerfile
     restart: unless-stopped
     # host networking: Mediasoup binds UDP ports directly on the VPS
     network_mode: host

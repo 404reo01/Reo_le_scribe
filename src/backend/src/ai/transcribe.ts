@@ -6,7 +6,7 @@ export async function transcribeAudio(audioBuffer: Buffer, mimeType = 'audio/web
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY is not set');
 
-  const safeBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength);
+  const safeBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer;
   const h = new Uint8Array(safeBuffer).slice(0, 4);
   console.log(`[transcribe] size=${audioBuffer.byteLength} header=${Array.from(h).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
 
