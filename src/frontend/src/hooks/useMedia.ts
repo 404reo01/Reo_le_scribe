@@ -179,7 +179,12 @@ export function useMedia() {
     const sendTransport = sendTransportRef.current;
     if (!sendTransport) return;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+    }
     setLocalStream(stream);
 
     for (const track of stream.getTracks()) {
