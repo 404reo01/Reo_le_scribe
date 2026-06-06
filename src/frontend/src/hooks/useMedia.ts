@@ -14,7 +14,6 @@ export interface RemoteStream {
   source: 'camera' | 'screen';
 }
 
-// Promisified socket ack helper
 function socketRequest<T>(event: string, data: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timeout: ${event}`)), 10_000);
@@ -33,15 +32,15 @@ export function useMedia() {
   const recvTransportRef = useRef<Transport | null>(null);
   const producersRef = useRef<Map<string, Producer>>(new Map());
   const screenProducerRef = useRef<Producer | null>(null);
-  // Producers that arrive via new-producer while init() hasn't finished yet
   const pendingProducersRef = useRef<{ producerId: string; socketId: string; kind: 'audio' | 'video'; source: 'camera' | 'screen' }[]>([]);
 
+  // localStream carries audio (always) + optionally video when camera is on
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, RemoteStream>>(new Map());
   const [isReady, setIsReady] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(false);
 
-  // Consume a single producer and add its stream to remoteStreams
   const consumeProducer = useCallback(async (
     producerId: string,
     socketId: string,
@@ -59,7 +58,6 @@ export function useMedia() {
       rtpParameters: object;
     }>('consume', { producerId, rtpCapabilities: device.rtpCapabilities });
 
-    // Stale check: transport was replaced/closed while awaiting
     if (recvTransportRef.current !== recvTransport) return;
 
     const consumer = await recvTransport.consume(params as never);
@@ -79,7 +77,6 @@ export function useMedia() {
     await socketRequest('consumer-resume', { consumerId: consumer.id });
   }, []);
 
-  // Init device + transports when entering a room
   useEffect(() => {
     if (!state.room) return;
 
@@ -124,7 +121,19 @@ export function useMedia() {
       if (cancelled) return;
       setIsReady(true);
 
-      // Merge producers that existed when we joined + any that fired new-producer during setup
+      // Auto-start microphone as soon as transports are ready
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        if (cancelled) { audioStream.getTracks().forEach((t) => t.stop()); return; }
+        setLocalStream(audioStream);
+        for (const track of audioStream.getAudioTracks()) {
+          const producer = await sendTransport.produce({ track, appData: { source: 'camera' } });
+          producersRef.current.set('audio', producer);
+        }
+      } catch {
+        console.warn('[useMedia] mic permission denied or unavailable');
+      }
+
       const toConsume = [...existingProducers, ...pendingProducersRef.current];
       pendingProducersRef.current = [];
       for (const p of toConsume) {
@@ -143,11 +152,11 @@ export function useMedia() {
       deviceRef.current = null;
       pendingProducersRef.current = [];
       setIsReady(false);
+      setIsCameraOn(false);
       setRemoteStreams(new Map());
     };
   }, [state.room?.id, consumeProducer]);
 
-  // A peer in the room just started publishing
   useSocket('new-producer', (data: unknown) => {
     const { producerId, socketId, kind, source = 'camera' } = data as {
       producerId: string;
@@ -156,14 +165,12 @@ export function useMedia() {
       source?: 'camera' | 'screen';
     };
     if (!recvTransportRef.current) {
-      // Recv transport not ready yet — queue for after init() completes
       pendingProducersRef.current.push({ producerId, socketId, kind, source: source ?? 'camera' });
       return;
     }
     consumeProducer(producerId, socketId, kind, source).catch(console.error);
   });
 
-  // A peer stopped publishing (left room or stopped track)
   useSocket('producer-closed', (data: unknown) => {
     const { producerId } = data as { producerId: string };
     setRemoteStreams((prev) => {
@@ -175,33 +182,59 @@ export function useMedia() {
     });
   });
 
-  const startPublishing = useCallback(async () => {
+  // Start camera — adds a video track on top of the existing audio stream
+  const startCamera = useCallback(async () => {
     const sendTransport = sendTransportRef.current;
     if (!sendTransport) return;
 
-    let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch {
-      stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-    }
-    setLocalStream(stream);
+      const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const videoTrack = videoStream.getVideoTracks()[0];
 
-    for (const track of stream.getTracks()) {
-      const producer = await sendTransport.produce({ track, appData: { source: 'camera' } });
-      producersRef.current.set(track.kind, producer);
+      setLocalStream((prev) => {
+        const combined = new MediaStream([
+          ...(prev?.getAudioTracks() ?? []),
+          videoTrack,
+        ]);
+        return combined;
+      });
+
+      const producer = await sendTransport.produce({ track: videoTrack, appData: { source: 'camera' } });
+      producersRef.current.set('video', producer);
+      setIsCameraOn(true);
+    } catch {
+      console.warn('[useMedia] camera not available');
     }
   }, []);
 
-  const stopPublishing = useCallback(async () => {
+  // Stop camera — removes video track, keeps audio running
+  const stopCamera = useCallback(async () => {
+    const videoProducer = producersRef.current.get('video');
+    if (videoProducer) {
+      await socketRequest('close-producer', { producerId: videoProducer.id }).catch(() => {});
+      videoProducer.close();
+      producersRef.current.delete('video');
+    }
+
+    setLocalStream((prev) => {
+      if (!prev) return null;
+      prev.getVideoTracks().forEach((t) => t.stop());
+      return new MediaStream(prev.getAudioTracks());
+    });
+
+    setIsCameraOn(false);
+  }, []);
+
+  // Full stop — mic + camera (used on leave)
+  const stopAll = useCallback(async () => {
     for (const producer of producersRef.current.values()) {
       await socketRequest('close-producer', { producerId: producer.id }).catch(() => {});
       producer.close();
     }
     producersRef.current.clear();
-    localStream?.getTracks().forEach((t) => t.stop());
-    setLocalStream(null);
-  }, [localStream]);
+    setLocalStream((prev) => { prev?.getTracks().forEach((t) => t.stop()); return null; });
+    setIsCameraOn(false);
+  }, []);
 
   const startScreenShare = useCallback(async () => {
     const sendTransport = sendTransportRef.current;
@@ -214,13 +247,11 @@ export function useMedia() {
     const producer = await sendTransport.produce({ track, appData: { source: 'screen' } });
     screenProducerRef.current = producer;
 
-    // Auto-stop when the user clicks the browser "Stop sharing" button
     track.addEventListener('ended', () => {
       stopScreenShareInternal(producer, stream);
     }, { once: true });
   }, []);
 
-  // Internal helper — doesn't depend on state, safe to call from event listener
   function stopScreenShareInternal(producer: Producer, stream: MediaStream) {
     socketRequest('close-producer', { producerId: producer.id }).catch(() => {});
     producer.close();
@@ -241,8 +272,10 @@ export function useMedia() {
     screenStream,
     remoteStreams,
     isReady,
-    startPublishing,
-    stopPublishing,
+    isCameraOn,
+    startCamera,
+    stopCamera,
+    stopAll,
     startScreenShare,
     stopScreenShare,
   };

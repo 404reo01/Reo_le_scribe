@@ -19,7 +19,7 @@ export function RoomPage() {
   const { state, dispatch } = useRoom();
   const {
     localStream, screenStream, remoteStreams,
-    isReady, startPublishing, stopPublishing,
+    isReady, isCameraOn, startCamera, stopCamera, stopAll,
     startScreenShare, stopScreenShare,
   } = useMedia();
   const { start: startBuffer, stop: stopBuffer, getBlob } = useAudioBuffer();
@@ -66,18 +66,19 @@ export function RoomPage() {
   async function handleLeave() {
     stopBuffer();
     stopScreenShare();
-    await stopPublishing();
+    await stopAll();
     getSocket().emit(SOCKET_EVENTS.LEAVE_ROOM);
     dispatch({ type: 'LEFT' });
   }
 
   if (!state.room) return null;
 
-  const isPublishing = !!localStream;
+  const hasMic = !!localStream;
   const isScreenSharing = !!screenStream;
   const pseudoBySocketId = new Map(state.peers.map((p) => [p.id, p.pseudo]));
   const myPseudo = state.peers.find((p) => p.id === getSocket().id)?.pseudo ?? 'You';
   const videoTiles = Array.from(remoteStreams.values()).filter((r) => r.kind === 'video');
+  const hasLocalVideo = isCameraOn && !!localStream?.getVideoTracks().length;
 
   return (
     <div
@@ -105,7 +106,7 @@ export function RoomPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-4">
-          {isPublishing && (
+          {hasMic && (
             <button
               onClick={handleBookmark}
               disabled={bookmarkLoading}
@@ -153,18 +154,18 @@ export function RoomPage() {
               </button>
 
               <button
-                onClick={isPublishing ? stopPublishing : startPublishing}
+                onClick={isCameraOn ? stopCamera : startCamera}
                 className="text-sm font-medium px-3 py-1.5 rounded-lg transition-all active:scale-95"
                 style={{
-                  background: isPublishing
+                  background: isCameraOn
                     ? 'rgba(130,24,26,0.6)'
                     : 'linear-gradient(135deg, #82181A, #a01e20)',
                   border: '1px solid rgba(130,24,26,0.5)',
                   color: '#FFEDD4',
-                  boxShadow: isPublishing ? 'none' : '0 2px 12px rgba(130,24,26,0.4)',
+                  boxShadow: isCameraOn ? 'none' : '0 2px 12px rgba(130,24,26,0.4)',
                 }}
               >
-                {isPublishing ? 'Stop Camera' : 'Start Camera'}
+                {isCameraOn ? 'Stop Camera' : 'Start Camera'}
               </button>
             </>
           )}
@@ -183,9 +184,9 @@ export function RoomPage() {
 
       {/* Media grid */}
       <main className="flex-1 p-4 overflow-auto">
-        {(localStream || screenStream || videoTiles.length > 0) ? (
+        {(hasLocalVideo || screenStream || videoTiles.length > 0) ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {localStream && (
+            {hasLocalVideo && localStream && (
               <MediaTile stream={localStream} label={myPseudo} muted isLocal />
             )}
             {screenStream && (
@@ -207,7 +208,7 @@ export function RoomPage() {
             </p>
             {isReady && (
               <button
-                onClick={startPublishing}
+                onClick={startCamera}
                 className="text-sm px-5 py-2.5 rounded-xl transition-all active:scale-95"
                 style={{
                   background: 'linear-gradient(135deg, #82181A, #a01e20)',
