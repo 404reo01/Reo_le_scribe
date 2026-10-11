@@ -22,7 +22,13 @@
       "Skill(update-config)",
       "WebFetch(domain:reactbits.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(netlify status:*)",
+      "Bash(netlify sites:list)",
+      "Bash(netlify sites:create --name reo-le-scribe --account-slug reo)",
+      "Bash(netlify api:*)",
+      "Bash(netlify sites:create --name reo-le-scribe --account-slug 404reo01)",
+      "Bash(netlify deploy:*)"
     ]
   }
 }

@@ -8,3 +8,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+
+# Local Netlify folder
+.netlify
